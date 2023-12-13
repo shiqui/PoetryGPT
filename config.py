@@ -12,13 +12,14 @@ class DatasetConfig:
 
 @dataclass
 class TrainerConfig:
-    n_epochs: int = 5000
-    learning_rate: float = 1e-3
-    eval_interval: int = 100
-    checkpoint_interval: int = 500
-    checkpoint_path: str = "checkpoints/"
-    model_path: str = "models/"
-    device: torch.cuda.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    n_epochs: int
+    learning_rate: float
+    optimizer: torch.optim
+    loss_fn: torch.nn
+    eval_interval: int
+    checkpoint_interval: int
+    checkpoint_path: str
+    model_path: str
 
 
 @dataclass
@@ -30,6 +31,7 @@ class ModelConfig:
     head_dim: int
     n_layer: int
     dropout: float
+    device: torch.cuda.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 dataset_config_base = DatasetConfig(
@@ -39,7 +41,16 @@ dataset_config_base = DatasetConfig(
     data_path="data/poems.txt",
 )
 
-trainer_config_base = TrainerConfig()
+trainer_config_base = TrainerConfig(
+    n_epochs=5000,
+    learning_rate=1e-3,
+    optimizer=torch.optim.AdamW,
+    loss_fn=torch.nn.CrossEntropyLoss(),
+    eval_interval=2000,
+    checkpoint_interval=1,
+    checkpoint_path="checkpoints/",
+    model_path="models/"
+)
 
 model_config_base = ModelConfig(
     batch_size=dataset_config_base.batch_size,
