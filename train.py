@@ -18,7 +18,7 @@ def evaluate(model, test_dataloader, config: TrainerConfig):
         for i, (context, target) in enumerate(test_dataloader):
             context, target = context.to(device), target.to(device)  # noqa
             logits = model(context)
-            loss.append(config.loss_fn(logits.transpose(1, 2), target))
+            loss.append(config.loss_fn(logits.transpose(1, 2), target).item())
     return sum(loss) / len(loss)
 
 
@@ -48,11 +48,11 @@ def train(model, train_dataloader, test_dataloader, config: TrainerConfig):
             step += 1
 
         if epoch % config.checkpoint_interval == 0:
-            torch.save(model.state_dict(), f"checkpoints/model_{epoch}.pth")  # noqa
+            torch.save(model.state_dict(), config.checkpoint_path.format(epoch=epoch))
 
     if not os.path.exists(config.model_path):
         os.makedirs(config.model_path)
-    torch.save(model.state_dict(), f"{config.model_path}/model{epoch}.pth")  # noqa
+    torch.save(model.state_dict(), f"{config.model_path}/model{epoch}.pth")
 
 
 if __name__ == "__main__":
@@ -60,11 +60,8 @@ if __name__ == "__main__":
     test_dataloader = get_dataloader("test", dataset_config_base)
 
     tokenizer = CharTokenizer()
-    with open("data/poems.txt") as f:
-        text = f.read()
-    tokenizer.fit(text)
+    tokenizer.fit(dataset_config_base.data_path, dataset_config_base.min_occurance)
 
     model = PoetryGPT(tokenizer, model_config_base)
-
     torchinfo.summary(model)
     train(model, train_dataloader, test_dataloader, trainer_config_base)

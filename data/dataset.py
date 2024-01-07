@@ -1,3 +1,7 @@
+import os
+import json
+
+
 import torch
 from torch.utils.data import Dataset, DataLoader
 
@@ -22,15 +26,28 @@ class PoemDataset(Dataset):
 
 
 def get_dataloader(split, config: DatasetConfig):
+    # Fit tokenizer
     tokenizer = CharTokenizer()
-    with open(config.data_path) as f:
-        text = f.read()
-    tokenizer.fit(text)
-    poems = text.split("\n\n")
+    tokenizer.fit(config.data_path, config.min_occurance)
+
+    # Load data
+    poems = []
+    for filename in os.listdir(config.data_path):
+        with open(os.path.join(config.data_path, filename), "r") as f:
+            data = json.load(f)
+        poems += ["\n".join(item["paragraphs"]) for item in data]
+
+    # Encode data
     data = []
+
     for poem in poems:
-        if len(poem) < config.seq_len - 1:
-            padded_poem = f"<{poem}{'_' * (config.seq_len - len(poem) - 1)}>"
+        if any(c not in tokenizer.vocab for c in poem):
+            # tokenizer vocab exclues rare characters
+            # this should help with overfitting
+            continue
+
+        if len(poem) <= config.seq_len - 2:
+            padded_poem = f"<{poem}>{'_' * (config.seq_len - len(poem) - 1)}"
             data.append(
                 torch.tensor(tokenizer.encode(padded_poem), dtype=torch.long)
             )
