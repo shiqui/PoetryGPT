@@ -103,8 +103,10 @@ class PoetryGPT(nn.Module):
         self.blocks = nn.Sequential(
             *[DecoderBlock(config) for _ in range(config.n_layer)]
         )
-        self.ln_f = nn.LayerNorm(config.emb_dim)
-        self.lm_head = nn.Linear(config.emb_dim, tokenizer.vocab_size)
+        self.ln = nn.LayerNorm(config.emb_dim)
+        self.linear = nn.Linear(config.emb_dim, tokenizer.vocab_size, bias=False)
+        self.linear.weight = self.embedding_table.weight  # final linear is embedding table transposed
+        self.to(config.device)
 
     def forward(self, x):
         batch_size, seq_len = x.shape
@@ -116,18 +118,19 @@ class PoetryGPT(nn.Module):
         )  # (seq_len, emb_dim)
         x = tok_emb + pos_emb
         x = self.blocks(x)  # (batch_size, seq_len, emb_dim)
-        x = self.ln_f(x)  # (batch_size, seq_len, emb_dim)
-        logits = self.lm_head(x)  # (batch_size, seq_len, vocab_size)
+        x = self.ln(x)  # (batch_size, seq_len, emb_dim)
+        logits = self.linear(x)  # (batch_size, seq_len, vocab_size)
 
         return logits
 
-    def generate(self, context):
+    def generate(self, context, temperature=1.0):
         self.eval()
         context = context[:, -self.config.seq_len:]
         logits = self(context[:, -self.config.seq_len:])  # crop if too long
         # (batch_size, seq_len, vocab_size)
         logits = logits[:, -1, :]  # take last token only
         # (batch_size, vocab_size)
+        logits = logits / temperature
         probs = F.softmax(logits, dim=-1)
         # sample from the distribution
         next_token = torch.multinomial(probs, num_samples=1)
