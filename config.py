@@ -36,7 +36,7 @@ class ModelConfig:
 
 
 dataset_config_base = DatasetConfig(
-    batch_size=16,
+    batch_size=64,
     seq_len=32,
     train_split=0.9,
     data_path="data/raw",
@@ -44,11 +44,11 @@ dataset_config_base = DatasetConfig(
 )
 
 trainer_config_base = TrainerConfig(
-    n_epochs=1000,
+    n_epochs=100,
     learning_rate=1e-3,
     optimizer=torch.optim.AdamW,
     loss_fn=torch.nn.CrossEntropyLoss(),
-    eval_interval=2000,
+    eval_interval=5,
     checkpoint_interval=10,
     checkpoint_path="checkpoints/base_{epoch}.pth",
     model_path="models/base.pth"
